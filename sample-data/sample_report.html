@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f9f9f9; margin: 0; padding: 0; }
+        .container { max-width: 900px; margin: 0 auto; background-color: white; }
+        .header { background-color: #0078d4; color: white; padding: 30px; text-align: center; }
+        .header h1 { margin: 0; font-size: 28px; }
+        .content { padding: 30px; }
+        .report-title { color: #0078d4; font-size: 22px; margin: 20px 0 10px 0; border-bottom: 2px solid #0078d4; padding-bottom: 10px; }
+        .timestamp { color: #666; font-size: 12px; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th { background-color: #f5f5f5; color: #333; padding: 12px; text-align: left; border-bottom: 2px solid #ddd; font-weight: bold; }
+        td { padding: 10px 12px; border-bottom: 1px solid #eee; }
+        tr:hover { background-color: #f9f9f9; }
+        .status-pass { color: #107c10; font-weight: bold; }
+        .status-warn { color: #ff9800; font-weight: bold; }
+        .status-fail { color: #da3b01; font-weight: bold; }
+        .footer { background-color: #f5f5f5; padding: 20px; text-align: center; color: #666; font-size: 12px; border-top: 1px solid #ddd; }
+        .metrics { background-color: #f0f7ff; padding: 15px; margin: 20px 0; border-left: 4px solid #0078d4; border-radius: 3px; }
+        .metric-item { display: inline-block; margin-right: 30px; }
+        .metric-value { font-size: 24px; font-weight: bold; color: #0078d4; }
+        .metric-label { color: #666; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Sample Automation Report</h1>
+        </div>
+        <div class="content">
+            <h2 class="report-title">User Onboarding Report - Sample Output</h2>
+            <p class="timestamp">Generated: Wednesday, March 24, 2026 2:45:30 PM</p>
+            
+            <div class="metrics">
+                <div class="metric-item">
+                    <div class="metric-value">1</div>
+                    <div class="metric-label">Users Created</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value"><span class="status-pass">3</span></div>
+                    <div class="metric-label">Groups Assigned</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value"><span class="status-pass">Success</span></div>
+                    <div class="metric-label">Status</div>
+                </div>
+            </div>
+
+            <h3>User Details</h3>
+            <table>
+                <tr><th>Field</th><th>Value</th></tr>
+                <tr><td>User</td><td>John Doe</td></tr>
+                <tr><td>Username</td><td>john.doe</td></tr>
+                <tr><td>Email</td><td>john.doe@contoso.local</td></tr>
+                <tr><td>Department</td><td>Engineering</td></tr>
+                <tr><td>Role</td><td>Developer</td></tr>
+                <tr><td>Status</td><td><span class="status-pass">✓ Completed</span></td></tr>
+            </table>
+
+            <h3>Groups Assigned</h3>
+            <ul>
+                <li>AllEmployees</li>
+                <li>Dept-Engineering</li>
+                <li>Role-Developer</li>
+            </ul>
+
+            <h3>Actions Completed</h3>
+            <ul>
+                <li><span class="status-pass">✓</span> User account created in Active Directory</li>
+                <li><span class="status-pass">✓</span> Assigned to 3 security groups</li>
+                <li><span class="status-pass">✓</span> Account enabled and ready</li>
+                <li><span class="status-pass">✓</span> Temporary password generated</li>
+                <li><span class="status-pass">✓</span> User object configured with all attributes</li>
+            </ul>
+
+            <h3>Audit Trail Summary</h3>
+            <table>
+                <tr>
+                    <th>Action</th>
+                    <th>Status</th>
+                    <th>Target</th>
+                    <th>Timestamp</th>
+                </tr>
+                <tr>
+                    <td>UserCreated</td>
+                    <td><span class="status-pass">Success</span></td>
+                    <td>CN=John Doe,OU=Active,OU=Engineering,OU=Users,DC=contoso,DC=local</td>
+                    <td>2026-03-24 14:45:22</td>
+                </tr>
+                <tr>
+                    <td>GroupMembershipAdded</td>
+                    <td><span class="status-pass">Success</span></td>
+                    <td>AllEmployees</td>
+                    <td>2026-03-24 14:45:23</td>
+                </tr>
+                <tr>
+                    <td>GroupMembershipAdded</td>
+                    <td><span class="status-pass">Success</span></td>
+                    <td>Dept-Engineering</td>
+                    <td>2026-03-24 14:45:24</td>
+                </tr>
+                <tr>
+                    <td>GroupMembershipAdded</td>
+                    <td><span class="status-pass">Success</span></td>
+                    <td>Role-Developer</td>
+                    <td>2026-03-24 14:45:25</td>
+                </tr>
+                <tr>
+                    <td>UserOnboardingCompleted</td>
+                    <td><span class="status-pass">Success</span></td>
+                    <td>john.doe@contoso.local</td>
+                    <td>2026-03-24 14:45:26</td>
+                </tr>
+            </table>
+
+            <p><strong>Temporary Password:</strong> Provided securely to user via separate communication</p>
+            <p><strong>Next Steps:</strong> User will be prompted to change password on first logon</p>
+        </div>
+        <div class="footer">
+            <p>This is an automated report generated by Active Directory Automation Scripts.</p>
+            <p>For questions or support, contact your IT administration team.</p>
+            <p style="margin-top: 15px; font-size: 10px; border-top: 1px solid #ddd; padding-top: 10px;">Portfolio Project - AD Automation Framework</p>
+        </div>
+    </div>
+</body>
+</html>

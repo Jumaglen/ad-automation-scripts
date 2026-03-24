@@ -1,0 +1,28 @@
+# Secrets and credentials
+.env
+.env.*
+*.env
+credentials.ps1
+secrets.ps1
+*password*
+*credential*
+
+# Real domain names and hostnames
+hosts.ps1
+config.local.ps1
+
+# Output files with real data
+*.csv
+*.xlsx
+reports/output/
+logs/
+
+# Editor artifacts
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS artifacts
+.DS_Store
+Thumbs.db

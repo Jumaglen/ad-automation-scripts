@@ -1,0 +1,313 @@
+name: PowerShell Linting
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint:
+    runs-on: windows-latest
+    name: Lint PowerShell Scripts
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Install PSScriptAnalyzer
+      shell: pwsh
+      run: |
+        Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+        Import-Module PSScriptAnalyzer
+
+    - name: Run PSScriptAnalyzer
+      shell: pwsh
+      run: |
+        $scriptPaths = @(
+          'user-lifecycle',
+          'rbac-governance',
+          'azure-ad',
+          'dns-automation',
+          'utils'
+        )
+        
+        $results = @()
+        $totalErrors = 0
+        $totalWarnings = 0
+        
+        foreach ($path in $scriptPaths) {
+          Write-Host "Scanning $path for PowerShell script issues..."
+          $analysisResults = Invoke-ScriptAnalyzer -Path $path -Recurse
+          
+          if ($analysisResults) {
+            foreach ($result in $analysisResults) {
+              $results += $result
+              Write-Host "[$($result.Severity)] $($result.ScriptName):$($result.Line) - $($result.Message)" -ForegroundColor $(
+                switch ($result.Severity) {
+                  'Error' { 'Red' }
+                  'Warning' { 'Yellow' }
+                  'Information' { 'Green' }
+                }
+              )
+              
+              if ($result.Severity -eq 'Error') {
+                $totalErrors++
+              } elseif ($result.Severity -eq 'Warning') {
+                $totalWarnings++
+              }
+            }
+          }
+        }
+        
+        Write-Host ""
+        Write-Host "========================================"
+        Write-Host "Linting Results Summary"
+        Write-Host "========================================"
+        Write-Host "Total Errors:   $totalErrors"
+        Write-Host "Total Warnings: $totalWarnings"
+        Write-Host "Total Issues:   $($results.Count)"
+        Write-Host "========================================"
+        
+        if ($totalErrors -gt 0) {
+          Write-Host "Build failed: PSScriptAnalyzer found errors" -ForegroundColor Red
+          exit 1
+        } else {
+          Write-Host "Build passed: No critical issues found" -ForegroundColor Green
+          exit 0
+        }
+
+    - name: Generate SARIF report
+      if: always()
+      shell: pwsh
+      run: |
+        $scriptPaths = @(
+          'user-lifecycle',
+          'rbac-governance',
+          'azure-ad',
+          'dns-automation',
+          'utils'
+        )
+        
+        $analysisResults = @()
+        foreach ($path in $scriptPaths) {
+          $analysisResults += Invoke-ScriptAnalyzer -Path $path -Recurse
+        }
+        
+        if ($analysisResults) {
+          $sarifPath = 'pscriptanalyzer-results.sarif'
+          $analysisResults | ConvertTo-Sarif | Out-File -Path $sarifPath
+          Write-Host "SARIF report generated: $sarifPath"
+        }
+
+    - name: Upload SARIF to GitHub
+      if: always()
+      uses: github/codeql-action/upload-sarif@v2
+      continue-on-error: true
+      with:
+        sarif_file: pscriptanalyzer-results.sarif
+        category: PowerShell
+
+    - name: Comment PR with results
+      if: always() && github.event_name == 'pull_request'
+      shell: pwsh
+      run: |
+        $scriptPaths = @(
+          'user-lifecycle',
+          'rbac-governance',
+          'azure-ad',
+          'dns-automation',
+          'utils'
+        )
+        
+        $results = @()
+        foreach ($path in $scriptPaths) {
+          $results += Invoke-ScriptAnalyzer -Path $path -Recurse
+        }
+        
+        if ($results) {
+          $comment = "## PowerShell Linting Results`n`n"
+          $comment += "| Severity | Count |`n"
+          $comment += "|----------|-------|`n"
+          
+          $errors = @($results | Where-Object { $_.Severity -eq 'Error' })
+          $warnings = @($results | Where-Object { $_.Severity -eq 'Warning' })
+          
+          $comment += "| ❌ Error | $($errors.Count) |`n"
+          $comment += "| ⚠️ Warning | $($warnings.Count) |`n"
+          $comment += "| ℹ️ Information | $(@($results | Where-Object { $_.Severity -eq 'Information' }).Count) |`n`n"
+          
+          if ($errors) {
+            $comment += "### Script Errors`n"
+            foreach ($error in $errors) {
+              $comment += "- \`$($error.ScriptName):$($error.Line)\` - $($error.Message)`n"
+            }
+          }
+          
+          echo "LINTING_COMMENT<<EOF" >> $env:GITHUB_ENV
+          echo $comment >> $env:GITHUB_ENV
+          echo "EOF" >> $env:GITHUB_ENV
+        }
+
+  test:
+    runs-on: windows-latest
+    name: Test Script Syntax
+    needs: lint
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Test PowerShell Syntax
+      shell: pwsh
+      run: |
+        $scriptPaths = @(
+          'user-lifecycle',
+          'rbac-governance',
+          'azure-ad',
+          'dns-automation',
+          'utils'
+        )
+        
+        $syntaxErrors = 0
+        
+        foreach ($path in $scriptPaths) {
+          Get-ChildItem -Path $path -Filter "*.ps1" -Recurse | ForEach-Object {
+            Write-Host "Testing syntax: $($_.Name)"
+            try {
+              $null = [System.Management.Automation.PSParser]::Tokenize((Get-Content -Path $_.FullName), [ref]$null)
+              Write-Host "  ✓ Syntax OK" -ForegroundColor Green
+            }
+            catch {
+              Write-Host "  ✗ Syntax Error: $_" -ForegroundColor Red
+              $syntaxErrors++
+            }
+          }
+        }
+        
+        if ($syntaxErrors -gt 0) {
+          Write-Host "Build failed: $syntaxErrors syntax errors found" -ForegroundColor Red
+          exit 1
+        }
+
+    - name: Verify Help Documentation
+      shell: pwsh
+      run: |
+        $scriptPaths = @(
+          'user-lifecycle',
+          'rbac-governance',
+          'azure-ad',
+          'dns-automation',
+          'utils'
+        )
+        
+        $missingHelp = 0
+        
+        foreach ($path in $scriptPaths) {
+          Get-ChildItem -Path $path -Filter "*.ps1" -Recurse | ForEach-Object {
+            Write-Host "Checking help: $($_.Name)"
+            $content = Get-Content -Path $_.FullName
+            
+            if ($content -match '^\s*<#') {
+              Write-Host "  ✓ Comment-based help found" -ForegroundColor Green
+              
+              if ($content -match '\.SYNOPSIS') {
+                Write-Host "    ✓ SYNOPSIS present"
+              } else {
+                Write-Host "    ✗ SYNOPSIS missing" -ForegroundColor Yellow
+              }
+              
+              if ($content -match '\.DESCRIPTION') {
+                Write-Host "    ✓ DESCRIPTION present"
+              } else {
+                Write-Host "    ✗ DESCRIPTION missing" -ForegroundColor Yellow
+              }
+            } else {
+              Write-Host "  ✗ No comment-based help found" -ForegroundColor Red
+              $missingHelp++
+            }
+          }
+        }
+        
+        if ($missingHelp -gt 0) {
+          Write-Host "Warning: $missingHelp scripts missing comment-based help" -ForegroundColor Yellow
+        }
+
+  security:
+    runs-on: windows-latest
+    name: Security Analysis
+    needs: lint
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Scan for Secrets
+      shell: pwsh
+      run: |
+        Write-Host "Scanning for hardcoded credentials..."
+        
+        $secretPatterns = @(
+          'password\s*=\s*["\']?(?!YourSecurePassword)[\w]{8,}["\']?',
+          'api[_-]?key\s*=\s*["\'][\w]{20,}["\']',
+          'secret\s*=\s*["\'][\w]{20,}["\']',
+          '\$password|ConvertTo-SecureString'
+        )
+        
+        $scriptPaths = @(
+          'user-lifecycle',
+          'rbac-governance',
+          'azure-ad',
+          'dns-automation',
+          'utils'
+        )
+        
+        $secretsFound = 0
+        
+        foreach ($path in $scriptPaths) {
+          Get-ChildItem -Path $path -Filter "*.ps1" -Recurse | ForEach-Object {
+            $content = Get-Content -Path $_.FullPath
+            
+            foreach ($pattern in $secretPatterns) {
+              if ($content -match $pattern) {
+                Write-Host "⚠️ Possible secret found in $($_.Name)" -ForegroundColor Yellow
+                $secretsFound++
+              }
+            }
+          }
+        }
+        
+        if ($secretsFound -gt 0) {
+          Write-Host "Warning: Check files for hardcoded secrets" -ForegroundColor Yellow
+        }
+
+    - name: Verify .env.example Configuration
+      shell: pwsh
+      run: |
+        Write-Host "Verifying .env.example file..."
+        
+        if (-not (Test-Path '.env.example')) {
+          Write-Host "❌ .env.example file not found" -ForegroundColor Red
+          exit 1
+        }
+        
+        $content = Get-Content '.env.example'
+        $requiredFields = @(
+          'AD_DOMAIN',
+          'AZURE_TENANT_ID',
+          'SMTP_SERVER',
+          'LOG_PATH'
+        )
+        
+        foreach ($field in $requiredFields) {
+          if ($content -match $field) {
+            Write-Host "✓ $field present"
+          } else {
+            Write-Host "✗ $field missing" -ForegroundColor Red
+            exit 1
+          }
+        }
+        
+        Write-Host "✓ .env.example validation passed"
