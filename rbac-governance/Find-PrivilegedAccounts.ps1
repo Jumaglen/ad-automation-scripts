@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-Comprehensive scan for privileged accounts with MFA and dedication status checks.
+Comprehensive scan for privileged accounts with MFA and comprehensive dedication status checks.
 
 .DESCRIPTION
 Identifies and analyzes all accounts with administrative privileges in Active Directory:
